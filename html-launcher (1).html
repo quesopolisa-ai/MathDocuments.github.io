@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Launchpad — Local HTML Runner</title>
+<style>
+  :root{
+    --bg: #0d1117;
+    --panel: #12181f;
+    --panel-2: #161d26;
+    --border: #232b35;
+    --text: #e6edf3;
+    --dim: #7d8896;
+    --accent: #5eead4;
+    --accent-dim: #1a4a44;
+    --warn: #f5a97f;
+    --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', Consolas, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 40px 24px 80px;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(94,234,212,0.06), transparent 40%),
+      radial-gradient(circle at 80% 10%, rgba(245,169,127,0.05), transparent 35%);
+  }
+  .wrap{ max-width: 880px; margin: 0 auto; }
+
+  header{ margin-bottom: 32px; }
+  .eyebrow{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before{
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+  h1{
+    font-family: var(--mono);
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 700;
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+  }
+  .sub{ color: var(--dim); font-size: 15px; max-width: 60ch; line-height: 1.5; }
+
+  .dropzone{
+    margin-top: 28px;
+    border: 1.5px dashed var(--border);
+    border-radius: 14px;
+    background: var(--panel);
+    padding: 36px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, transform .1s ease;
+    position: relative;
+  }
+  .dropzone:hover{ border-color: var(--accent); background: var(--panel-2); }
+  .dropzone.drag{
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    transform: scale(0.995);
+  }
+  .dropzone svg{ width: 30px; height: 30px; color: var(--accent); margin-bottom: 10px; }
+  .dz-title{ font-weight: 600; font-size: 15px; }
+  .dz-sub{ color: var(--dim); font-size: 13px; margin-top: 4px; font-family: var(--mono); }
+  input[type=file]{ display:none; }
+
+  .section-label{
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 36px 0 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .count{ color: var(--accent); }
+
+  .mode-toggle{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .mode-info{ min-width: 0; }
+  .mode-title{ font-size: 14px; font-weight: 600; }
+  .mode-sub{ color: var(--dim); font-size: 12.5px; margin-top: 3px; line-height: 1.4; max-width: 48ch; }
+  .switch{
+    flex-shrink: 0;
+    width: 46px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--accent-dim);
+    border: 1px solid var(--border);
+    position: relative;
+    cursor: pointer;
+    padding: 0;
+    transition: background .15s ease;
+  }
+  .switch[aria-checked="true"]{ background: #3a2f4a; }
+  .switch-knob{
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    transition: transform .15s ease, background .15s ease;
+  }
+  .switch[aria-checked="true"] .switch-knob{
+    transform: translateX(20px);
+    background: var(--warn);
+  }
+
+  .empty{
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    text-align: center;
+    color: var(--dim);
+    font-size: 14px;
+    font-family: var(--mono);
+    background: var(--panel);
+  }
+
+  .list{ display: flex; flex-direction: column; gap: 10px; }
+
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .card:hover{ border-color: #3a4553; background: var(--panel-2); }
+
+  .file-icon{
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .file-info{ flex: 1; min-width: 0; }
+  .file-name{
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-meta{ color: var(--dim); font-size: 12px; margin-top: 2px; }
+
+  .actions{ display: flex; gap: 8px; flex-shrink: 0; }
+  button{
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-run{
+    background: var(--accent);
+    color: #04211c;
+    border-color: var(--accent);
+  }
+  .btn-run:hover{ filter: brightness(1.08); }
+  .btn-ghost:hover{ border-color: var(--dim); }
+  .btn-danger:hover{ border-color: var(--warn); color: var(--warn); }
+
+  .save-panel{
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+    padding: 6px 16px;
+  }
+  .save-row{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+  }
+  .save-row + .save-row{ border-top: 1px solid var(--border); }
+  .save-info{ min-width: 0; }
+  .save-title{ font-size: 14px; font-weight: 600; }
+  .save-sub{ color: var(--dim); font-size: 12.5px; margin-top: 3px; line-height: 1.4; max-width: 46ch; }
+  .save-panel button{ flex-shrink: 0; }
+  .save-status{
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    min-height: 18px;
+    padding-bottom: 12px;
+  }
+  .save-status.error{ color: var(--warn); }
+
+  .viewer-overlay{
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 1000;
+    flex-direction: column;
+  }
+  .viewer-overlay.open{ display: flex; }
+  .viewer-bar{
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  .viewer-name{
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .viewer-actions{ display: flex; gap: 8px; flex-shrink: 0; }
+  .viewer-frame{
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #fff;
+  }
+
+  footer{
+    margin-top: 44px;
+    color: var(--dim);
+    font-size: 12px;
+    font-family: var(--mono);
+    text-align: center;
+  }
+  footer a{ color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 520px){
+    .card{ flex-wrap: wrap; }
+    .actions{ width: 100%; justify-content: flex-end; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Local &amp; offline</div>
+    <h1>Launchpad</h1>
+    <div class="sub">Import .html files from your computer, then click Run to launch them in a new tab — exactly as if you'd opened the file directly. Nothing leaves your browser.</div>
+  </header>
+
+  <div class="dropzone" id="dropzone">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-3.5"/><path d="M8.5 12H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2"/></svg>
+    <div class="dz-title">Drop HTML files here, or click to browse</div>
+    <div class="dz-sub">accepts .html / .htm — multiple files ok</div>
+    <input type="file" id="fileInput" accept=".html,.htm,text/html" multiple>
+  </div>
+
+  <div class="section-label">
+    <span>Imported files</span>
+    <span class="count" id="countLabel">0</span>
+  </div>
+
+  <div class="mode-toggle">
+    <div class="mode-info">
+      <div class="mode-title" id="modeTitle">Inline viewer</div>
+      <div class="mode-sub" id="modeSub">Runs on this page in a full-screen viewer. Saved data (like server lists) persists between runs.</div>
+    </div>
+    <button class="switch" id="modeSwitch" role="switch" aria-checked="false">
+      <span class="switch-knob"></span>
+    </button>
+  </div>
+
+  <div id="emptyState" class="empty">No files imported yet — drop one above to get started.</div>
+  <div class="list" id="fileList"></div>
+
+  <div class="section-label"><span>Save / restore</span></div>
+  <div class="save-panel">
+    <div class="save-row">
+      <div class="save-info">
+        <div class="save-title">Save this session</div>
+        <div class="save-sub">Bundles every imported file into one .launchpad file you can reopen later.</div>
+      </div>
+      <button class="btn-ghost" id="saveBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save session
+      </button>
+    </div>
+    <div class="save-row">
+      <div class="save-info">
+        <div class="save-title">Restore a session</div>
+        <div class="save-sub">Load a previously saved .launchpad file to bring its files back into the list.</div>
+      </div>
+      <button class="btn-ghost" id="loadBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Load session
+      </button>
+      <input type="file" id="sessionInput" accept=".launchpad,.json" style="display:none">
+    </div>
+    <div class="save-status" id="saveStatus"></div>
+  </div>
+
+  <footer>runs entirely client-side · files are held in memory only · <a href="#" id="clearAll">clear all</a></footer>
+</div>
+
+<div id="viewerOverlay" class="viewer-overlay">
+  <div class="viewer-bar">
+    <span class="viewer-name" id="viewerName"></span>
+    <div class="viewer-actions">
+      <button class="btn-ghost" id="fullscreenBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        Fullscreen
+      </button>
+      <button class="btn-ghost" id="closeViewerBtn">Close</button>
+    </div>
+  </div>
+  <iframe id="viewerFrame" class="viewer-frame" allowfullscreen></iframe>
+</div>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileList = document.getElementById('fileList');
+  const emptyState = document.getElementById('emptyState');
+  const countLabel = document.getElementById('countLabel');
+  const clearAll = document.getElementById('clearAll');
+
+  // store { id, name, size, content, url }
+  let files = [];
+  let idCounter = 0;
+  let launchMode = 'inline'; // 'inline' = same-page viewer (persists storage), 'blob' = new tab via blob URL
+
+  dropzone.addEventListener('click', () => fileInput.click());
+
+  ['dragenter','dragover'].forEach(evt =>
+    dropzone.addEventListener(evt, e => {
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.add('drag');
+    })
+  );
+  ['dragleave','drop'].forEach(evt =>
+    dropzone.addEventListener(evt, e => {
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.remove('drag');
+    })
+  );
+  dropzone.addEventListener('drop', e => {
+    handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', e => {
+    handleFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  function handleFiles(fileListRaw){
+    const items = Array.from(fileListRaw).filter(f =>
+      f.name.toLowerCase().endsWith('.html') || f.name.toLowerCase().endsWith('.htm')
+    );
+    items.forEach(f => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const entry = {
+          id: idCounter++,
+          name: f.name,
+          size: f.size,
+          content: reader.result
+        };
+        files.push(entry);
+        render();
+      };
+      reader.readAsText(f);
+    });
+  }
+
+  function formatSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1024/1024).toFixed(1) + ' MB';
+  }
+
+  const viewerOverlay = document.getElementById('viewerOverlay');
+  const viewerFrame = document.getElementById('viewerFrame');
+  const viewerName = document.getElementById('viewerName');
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
+  const closeViewerBtn = document.getElementById('closeViewerBtn');
+  const modeSwitch = document.getElementById('modeSwitch');
+  const modeTitle = document.getElementById('modeTitle');
+  const modeSub = document.getElementById('modeSub');
+
+  const MODE_COPY = {
+    inline: {
+      title: 'Inline viewer',
+      sub: 'Runs on this page in a full-screen viewer. Saved data (like server lists) persists between runs.'
+    },
+    blob: {
+      title: 'New tab (blob)',
+      sub: 'Opens in its own browser tab via a blob URL. Simple and isolated, but saved data resets on every run.'
+    }
+  };
+
+  modeSwitch.addEventListener('click', () => {
+    launchMode = launchMode === 'inline' ? 'blob' : 'inline';
+    const checked = launchMode === 'blob';
+    modeSwitch.setAttribute('aria-checked', String(checked));
+    modeTitle.textContent = MODE_COPY[launchMode].title;
+    modeSub.textContent = MODE_COPY[launchMode].sub;
+  });
+
+  function runFile(entry){
+    if(launchMode === 'blob'){
+      runFileAsBlob(entry);
+    }else{
+      runFileInline(entry);
+    }
+  }
+
+  function runFileInline(entry){
+    // Runs the file inline in a full-page viewer instead of a new tab/window.
+    // Written via srcdoc on a same-origin iframe so localStorage/IndexedDB
+    // (e.g. Eaglercraft's saved server list) persists across runs.
+    viewerName.textContent = entry.name;
+    viewerFrame.srcdoc = entry.content;
+    viewerOverlay.classList.add('open');
+  }
+
+  function runFileAsBlob(entry){
+    // Opens in a separate tab via a blob: URL. Every blob URL gets its own
+    // unique origin, so this is fully isolated from the launcher and other
+    // runs — but anything the page saves to localStorage/IndexedDB will NOT
+    // persist between launches.
+    const blob = new Blob([entry.content], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if(!win){
+      showStatus('Popup blocked — allow popups for this page, then try Run again.', true);
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  function closeViewer(){
+    if(document.fullscreenElement) document.exitFullscreen();
+    viewerOverlay.classList.remove('open');
+    viewerFrame.srcdoc = '';
+  }
+
+  fullscreenBtn.addEventListener('click', () => {
+    if(viewerFrame.requestFullscreen) viewerFrame.requestFullscreen();
+    else if(viewerFrame.webkitRequestFullscreen) viewerFrame.webkitRequestFullscreen();
+  });
+  closeViewerBtn.addEventListener('click', closeViewer);
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && viewerOverlay.classList.contains('open') && !document.fullscreenElement){
+      closeViewer();
+    }
+  });
+
+  function removeFile(id){
+    files = files.filter(f => f.id !== id);
+    render();
+  }
+
+  function render(){
+    countLabel.textContent = files.length;
+    emptyState.style.display = files.length ? 'none' : 'block';
+    fileList.innerHTML = '';
+    files.forEach(entry => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="file-icon">HTML</div>
+        <div class="file-info">
+          <div class="file-name">${escapeHtml(entry.name)}</div>
+          <div class="file-meta">${formatSize(entry.size)}</div>
+        </div>
+        <div class="actions">
+          <button class="btn-run" data-action="run">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            Run
+          </button>
+          <button class="btn-ghost" data-action="remove">Remove</button>
+        </div>
+      `;
+      card.querySelector('[data-action="run"]').addEventListener('click', () => runFile(entry));
+      card.querySelector('[data-action="remove"]').addEventListener('click', () => removeFile(entry.id));
+      fileList.appendChild(card);
+    });
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  clearAll.addEventListener('click', e => {
+    e.preventDefault();
+    files = [];
+    render();
+  });
+
+  // --- save / restore session ---
+  const saveBtn = document.getElementById('saveBtn');
+  const loadBtn = document.getElementById('loadBtn');
+  const sessionInput = document.getElementById('sessionInput');
+  const saveStatus = document.getElementById('saveStatus');
+
+  function showStatus(msg, isError){
+    saveStatus.textContent = msg;
+    saveStatus.classList.toggle('error', !!isError);
+    if(!isError){
+      setTimeout(() => { if(saveStatus.textContent === msg) saveStatus.textContent = ''; }, 4000);
+    }
+  }
+
+  saveBtn.addEventListener('click', () => {
+    if(files.length === 0){
+      showStatus('Nothing to save yet — import a file first.', true);
+      return;
+    }
+    const payload = {
+      type: 'launchpad-session',
+      version: 1,
+      savedAt: new Date().toISOString(),
+      files: files.map(f => ({ name: f.name, size: f.size, content: f.content }))
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = payload.savedAt.slice(0,19).replace(/[:T]/g,'-');
+    a.href = url;
+    a.download = `launchpad-session-${stamp}.launchpad`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    showStatus(`Saved ${files.length} file${files.length === 1 ? '' : 's'}.`);
+  });
+
+  loadBtn.addEventListener('click', () => sessionInput.click());
+
+  sessionInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = JSON.parse(reader.result);
+        if(!data || data.type !== 'launchpad-session' || !Array.isArray(data.files)){
+          throw new Error('not a valid session file');
+        }
+        data.files.forEach(f => {
+          files.push({ id: idCounter++, name: f.name, size: f.size, content: f.content });
+        });
+        render();
+        showStatus(`Restored ${data.files.length} file${data.files.length === 1 ? '' : 's'}.`);
+      }catch(err){
+        showStatus('Could not read that file — is it a .launchpad session file?', true);
+      }
+    };
+    reader.readAsText(file);
+    sessionInput.value = '';
+  });
+
+  render();
+</script>
+</body>
+</html>
